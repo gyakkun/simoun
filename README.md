@@ -1,6 +1,6 @@
 # Simoun
 
-An environment test script written in bash-style shell.
+An environment test script written for bash-style shell.
 
 ------------------
 
