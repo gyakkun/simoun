@@ -74,9 +74,27 @@ test_avail_module(){
 # 将module avail 中的得到的版本号提取出来, 逐一载入测试
 
 test_module_by_ver_num(){
-	echo dummy
+# echo ${module_to_test[@]}
+
+	for m_name in ${module_to_test[@]}
+	do
+		ctr=0
+		for i in `module avail | egrep "$m_name[^ ]+" -o`
+		do
+			items[ctr]=$i
+			ctr=`expr $ctr + 1`
+		done
+		for i in ${items[@]}
+		do
+# 将下面这句替换成module load 即可
+		echo $i
+		done
+	done
+	
 }
 
 test_avail_module
+
+test_module_by_ver_num
 
 exit 0
