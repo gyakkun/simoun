@@ -123,7 +123,7 @@ test_avail_module() {
 test_if_any_module_loading() {
 	if [ `module list | egrep -c "[0-9]\)"`  -ne 0 ]; then
 		local LOADED_MODULE_LIST=`module list | egrep  "[0-9]\) [^ ]+" -o`
-		yes_or_no_and_exec "Some modules are loading, ${red}$LOADED_MODULE_LIST${yellow}, should we unload all first? (y/N)" "module purge"
+		yes_or_no_and_exec "Some modules are loading:  ${red}$LOADED_MODULE_LIST${yellow}, should we unload all first? (y/N)" "module purge"
 		# 存疑: 怎样短路 purge 后面的&& [cmd] 使之不作为module purge的操作数?
 	fi
 }
@@ -143,10 +143,19 @@ test_module_by_ver_num() {
 		do
 			# 逐个 load / unload
 			# 此处需要"裸"执行 modul load $1, 用exec_cmd会新开bash环境导致module load/unload在原脚本环境中被"短路"
-			echo "+ module load $i"
-			module load $i
-			echo "+ module unload $i"
-			module unload $i
+			print_normal "+ module load $i"
+			module load $i &> /dev/null
+			if [ $? -eq 0 ]
+			then
+				print_success "Load OK!"
+				mpirun --version &> /dev/null
+				print_success "mpirun OK!"
+				print_normal "+ module unload $i"
+				module unload $i
+			else
+				print_error "Unable to load $i!"
+			fi
+
 		done
 	done
 	
