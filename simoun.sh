@@ -49,6 +49,8 @@ if test -t 1; then # if terminal
     fi
 fi
 
+# bail： 报错退出?
+
 bail() {
     print_error 'Error executing command, exiting'
     exit 1
@@ -64,6 +66,35 @@ exec_cmd() {
 }
 
 # End - Quote from nodesource_setup.sh
+
+# "_naked" for executing the command in the current bash 
+# environment, rather than using "bash -c "$1"". This can 
+# avoid the problem that when executing module-related 
+# commands with "exec_cmd", the new bash environtment will 
+# "short circuit" the previous module operation because of
+# the reset env-vars. (+ NAKED)
+
+exec_cmd_nobail_naked() {
+	print_normal "+ $1 + (NAKED)"
+	$1
+}
+
+exec_cmd_naked() {
+    exec_cmd_nobail_naked "$1" || bail
+}
+
+# "_nd" for "nodisplay", with this suffix the executed
+# command wouldn't display the succesive lines other than
+# the command it self in the first line. (+ NAKED_ND)
+
+exec_cmd_naked_nobail_nd() {
+	print_normal "+ $1 + (NAKED_ND)"
+	$1 &> /dev/null
+}
+
+exec_cmd_naked_nd() {
+	exec_cmd_naked_nobail_nd "$1" || bail
+}
 
 print_normal() {
 	echo "${normal}$@${normal}"
@@ -90,12 +121,16 @@ yes_or_no_and_exec () {
 		print_warning $1
 		read yn
 		case $yn in
-			# "裸"执行$2
-			[Yy]* ) $2; break;;
+			# "裸"执行$2, 且带bail (报错不跳过)
+			[Yy]* ) exec_cmd_naked "$2"; break;;
 			[Nn]* ) break;;
-			* ) echo "Please input y/N";;
+			* ) print_warning "Please input y/N";;
 		esac
 	done
+}
+
+pause() {
+	read -p "Press any key to continue... " dummy
 }
 
 test_module_installed() {
@@ -142,16 +177,16 @@ test_module_by_ver_num() {
 		for i in ${items[@]}
 		do
 			# 逐个 load / unload
-			# 此处需要"裸"执行 modul load $1, 用exec_cmd会新开bash环境导致module load/unload在原脚本环境中被"短路"
-			print_normal "+ module load $i"
-			module load $i &> /dev/null
+			# 此处需要"裸"执行 modul load $1, 用exec_cmd会新开
+			# bash环境导致module load/unload在原脚本环境中被"短路"
+			# 见 "_naked"
+			exec_cmd_naked_nobail_nd "module load $i"
 			if [ $? -eq 0 ]
 			then
 				print_success "Load OK!"
-				mpirun --version &> /dev/null
+				exec_cmd_naked_nobail_nd "mpirun --version"
 				print_success "mpirun OK!"
-				print_normal "+ module unload $i"
-				module unload $i
+				exec_cmd_naked_nobail_nd "module unload $i"
 			else
 				print_error "Unable to load $i!"
 			fi
@@ -161,6 +196,10 @@ test_module_by_ver_num() {
 	
 }
 
+display_cpu_info() {
+	exec_cmd "lscpu"
+}
+
 test_module_installed
 
 test_avail_module
@@ -168,5 +207,9 @@ test_avail_module
 test_if_any_module_loading
 
 test_module_by_ver_num
+
+pause
+
+display_cpu_info
 
 exit 0
