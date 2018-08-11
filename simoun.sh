@@ -28,7 +28,7 @@ module_to_test=(
 "$M_PSXE"
 )
 
-# Start - From nodesource_setup.sh
+# Start - Quote from nodesource_setup.sh
 
 if test -t 1; then # if terminal
     ncolors=$(which tput > /dev/null && tput colors) # supports color
@@ -57,12 +57,13 @@ bail() {
 exec_cmd_nobail() {
     print_normal "+ $1"
     bash -c "$1"
+}
 
 exec_cmd() {
     exec_cmd_nobail "$1" || bail
 }
 
-# End - From nodesource_setup.sh
+# End - Quote from nodesource_setup.sh
 
 print_normal() {
 	echo "${normal}$@${normal}"
@@ -89,7 +90,8 @@ yes_or_no_and_exec () {
 		print_warning $1
 		read yn
 		case $yn in
-			[Yy]* ) exec_cmd "$2"; break;;
+			# "裸"执行$2
+			[Yy]* ) $2; break;;
 			[Nn]* ) break;;
 			* ) echo "Please input y/N";;
 		esac
@@ -119,12 +121,11 @@ test_avail_module() {
 }
 
 test_if_any_module_loading() {
-	# print_info "test if there's module loaded"
 	if [ `module list | egrep -c "[0-9]\)"`  -ne 0 ]; then
 		local LOADED_MODULE_LIST=`module list | egrep  "[0-9]\) [^ ]+" -o`
-		yes_or_no_and_exec "Some modules are loading, ${red}$LOADED_MODULE_LIST${yellow}, should we unload all first? (y/N)" "module purge && module list"
+		yes_or_no_and_exec "Some modules are loading, ${red}$LOADED_MODULE_LIST${yellow}, should we unload all first? (y/N)" "module purge"
+		# 存疑: 怎样短路 purge 后面的&& [cmd] 使之不作为module purge的操作数?
 	fi
-	# print_info "End test if there's module loaded"
 }
 
 test_module_by_ver_num() {
@@ -141,10 +142,11 @@ test_module_by_ver_num() {
 		for i in ${items[@]}
 		do
 			# 逐个 load / unload
-			exec_cmd "module list"
-			exec_cmd "module load $i"
-			exec_cmd "module list"
-			exec_cmd "module unload $i"
+			# 此处需要"裸"执行 modul load $1, 用exec_cmd会新开bash环境导致module load/unload在原脚本环境中被"短路"
+			echo "+ module load $i"
+			module load $i
+			echo "+ module unload $i"
+			module unload $i
 		done
 	done
 	
