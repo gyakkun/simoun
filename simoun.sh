@@ -1,6 +1,7 @@
 #!/bin/bash
-# author: gyakkun
-# date:   2018/8/10
+# Simoun the script
+# author : gyakkun
+# date   : 2018/8/10
 
 # 脚本目标
 
@@ -27,6 +28,7 @@ module_to_test=(
 "$M_PSXE"
 )
 
+# Start - From nodesource_setup.sh
 
 if test -t 1; then # if terminal
     ncolors=$(which tput > /dev/null && tput colors) # supports color
@@ -47,14 +49,50 @@ if test -t 1; then # if terminal
     fi
 fi
 
-test_module_installed(){
+bail() {
+    print_error 'Error executing command, exiting'
+    exit 1
+}
+
+exec_cmd_nobail() {
+    print_normal "+ $1"
+    bash -c "$1"
+}
+
+exec_cmd() {
+    exec_cmd_nobail "$1" || bail
+}
+
+# End - From nodesource_setup.sh
+
+print_normal() {
+	echo "${normal}$@${normal}"
+}
+
+print_info() {
+	echo "${cyan}[Info] $@${normal}"
+}
+
+print_warning() {
+	echo "${yellow}[Warning] $@${normal}"
+}
+
+print_error() {
+	echo "${red}${bold}[Error]${normal} ${red}$@${normal}"
+}
+
+print_success() {
+	echo "${green}[Success] $@${normal}"
+}
+
+test_module_installed() {
 	type module &> /dev/null
 	if [ $? -eq 1 ]; then
-		echo "${yellow}Module hasn't been installed yet, please install it first.${normal}"
-		echo "${yellow}In Debian-based distro, use \"sudo apt-get install environment-modules\"${normal}"
+		print_error "Module hasn't been installed yet, please install it first."
+		print_info "In Debian-based distro, use \"sudo apt-get install environment-modules\""
 		exit 1
 	else
-		echo "${green}Module installation detected.${normal}"
+		print_success "Module installation detected."
 	fi
 }
 
@@ -64,9 +102,9 @@ test_avail_module(){
 	for m_name in ${module_to_test[@]}
 	do
 		if [ `module avail | grep -c $m_name` -ne 0 ]; then
-			echo "${cyan}$m_name exists${normal}"
+			print_info "$m_name exists"
 		else
-			echo "${red}$m_name doesn't exist${normal}"
+			print_warning "$m_name doesn't exist"
 		fi
 	done
 }
@@ -87,7 +125,8 @@ test_module_by_ver_num(){
 		for i in ${items[@]}
 		do
 # 将下面这句替换成module load 即可
-		echo $i
+			exec_cmd "module load $i"
+			exec_cmd "module unload $i"
 		done
 	done
 	
