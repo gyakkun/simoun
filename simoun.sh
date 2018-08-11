@@ -57,7 +57,6 @@ bail() {
 exec_cmd_nobail() {
     print_normal "+ $1"
     bash -c "$1"
-}
 
 exec_cmd() {
     exec_cmd_nobail "$1" || bail
@@ -85,6 +84,18 @@ print_success() {
 	echo "${green}[Success] $@${normal}"
 }
 
+yes_or_no_and_exec () {
+	while true; do
+		print_warning $1
+		read yn
+		case $yn in
+			[Yy]* ) exec_cmd "$2"; break;;
+			[Nn]* ) break;;
+			* ) echo "Please input y/N";;
+		esac
+	done
+}
+
 test_module_installed() {
 	type module &> /dev/null
 	if [ $? -eq 1 ]; then
@@ -96,12 +107,10 @@ test_module_installed() {
 	fi
 }
 
-test_avail_module(){
-	test_module_installed
-
+test_avail_module() {
 	for m_name in ${module_to_test[@]}
 	do
-		if [ `module avail | grep -c $m_name` -ne 0 ]; then
+		if [ `module avail | egrep -c $m_name` -ne 0 ]; then
 			print_info "$m_name exists"
 		else
 			print_warning "$m_name doesn't exist"
@@ -109,11 +118,17 @@ test_avail_module(){
 	done
 }
 
+test_if_any_module_loading() {
+	# print_info "test if there's module loaded"
+	if [ `module list | egrep -c "[0-9]\)"`  -ne 0 ]; then
+		local LOADED_MODULE_LIST=`module list | egrep  "[0-9]\) [^ ]+" -o`
+		yes_or_no_and_exec "Some modules are loading, ${red}$LOADED_MODULE_LIST${yellow}, should we unload all first? (y/N)" "module purge && module list"
+	fi
+	# print_info "End test if there's module loaded"
+}
+
+test_module_by_ver_num() {
 # 将module avail 中的得到的版本号提取出来, 逐一载入测试
-
-test_module_by_ver_num(){
-# echo ${module_to_test[@]}
-
 	for m_name in ${module_to_test[@]}
 	do
 		ctr=0
@@ -122,17 +137,24 @@ test_module_by_ver_num(){
 			items[ctr]=$i
 			ctr=`expr $ctr + 1`
 		done
+		
 		for i in ${items[@]}
 		do
-# 将下面这句替换成module load 即可
+			# 逐个 load / unload
+			exec_cmd "module list"
 			exec_cmd "module load $i"
+			exec_cmd "module list"
 			exec_cmd "module unload $i"
 		done
 	done
 	
 }
 
+test_module_installed
+
 test_avail_module
+
+test_if_any_module_loading
 
 test_module_by_ver_num
 
