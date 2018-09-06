@@ -121,7 +121,7 @@ yes_or_no_and_exec () {
 		print_warning $1
 		read yn
 		case $yn in
-			# "裸"执行$2, 且带bail (报错不跳过)
+			# "裸"执行$2
 			[Yy]* ) exec_cmd_naked "$2"; break;;
 			[Nn]* ) break;;
 			* ) print_warning "Please input y/N";;
@@ -132,6 +132,12 @@ yes_or_no_and_exec () {
 pause() {
 	read -p "Press any key to continue... " dummy
 }
+
+# ------------------------------------------------------------#
+#															  #
+#							Main Dish						  #
+#															  #
+# ------------------------------------------------------------#
 
 test_module_installed() {
 	type module &> /dev/null
@@ -180,6 +186,7 @@ test_module_by_ver_num() {
 			# 此处需要"裸"执行 modul load $1, 用exec_cmd会新开
 			# bash环境导致module load/unload在原脚本环境中被"短路"
 			# 见 "_naked"
+			# 同时需要报错不退出, 即"_nobail"
 			exec_cmd_naked_nobail_nd "module load $i"
 			if [ $? -eq 0 ]
 			then
@@ -200,6 +207,23 @@ display_cpu_info() {
 	exec_cmd "lscpu"
 }
 
+test_stress_installed() {
+	if [ -x /usr/bin/stress ]; then
+		print_info "stress installation detected"
+	else
+		print_warning "stress hasn't been installed yet."
+	fi
+	if [ -x /usr/bin/stress-ng ]; then
+		print_info "stress"
+}
+
+stress_cpu_by_core_num(){
+	cpu_num = `lscpu | egrep "^CPU\(s\):.*$" | sed -r 's/CPU\(s\):\s+//'`
+	print_info "Now stress the CPUs for 60 sec by the core numbers..."
+	exec_cmd "stress --cpu ${cpu_num} --timeout 60"
+	print_info "CPU stressing finished."
+}
+
 test_module_installed
 
 test_avail_module
@@ -207,6 +231,8 @@ test_avail_module
 test_if_any_module_loading
 
 test_module_by_ver_num
+
+stress_cpu_by_core_num
 
 pause
 
