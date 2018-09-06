@@ -209,16 +209,21 @@ display_cpu_info() {
 
 test_stress_installed() {
 	if [ -x /usr/bin/stress ]; then
-		print_info "stress installation detected"
+		print_info "stress installation detected."
 	else
 		print_warning "stress hasn't been installed yet."
 	fi
 	if [ -x /usr/bin/stress-ng ]; then
-		print_info "stress"
+		print_info "stress-ng installation detected."
+	else
+		print_warning "stress hasn't been installed yet."
+	fi
 }
 
 stress_cpu_by_core_num(){
-	cpu_num = `lscpu | egrep "^CPU\(s\):.*$" | sed -r 's/CPU\(s\):\s+//'`
+	# cpu_num = `lscpu | egrep "^CPU\(s\):.*$" | sed -r 's/CPU\(s\):\s+//'`
+	cpu_num=`lscpu | egrep "^CPU\(s\):.*$"  | awk -F ' ' '//{printf $(NF)}'`
+	print_warning "The cpu number is $cpu_num."
 	print_info "Now stress the CPUs for 60 sec by the core numbers..."
 	exec_cmd "stress --cpu ${cpu_num} --timeout 60"
 	print_info "CPU stressing finished."
@@ -232,10 +237,10 @@ test_if_any_module_loading
 
 test_module_by_ver_num
 
+display_cpu_info
+
 stress_cpu_by_core_num
 
 pause
-
-display_cpu_info
 
 exit 0
